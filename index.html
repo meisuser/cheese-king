@@ -2,352 +2,402 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Cheese King - 派對問答</title>
     <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            /* 🎨 配色盤調整：再深一點點，更有質感 */
-            /* 1. 從原本的 #7860a8 加深為 #5D458B (深紫) */
-            /* 2. 從原本的 #e2a9cd 加深為 #C782AD (暗粉) */
-            --bg-gradient-1: #5D458B; 
-            --bg-gradient-2: #C782AD; 
+            /* 🎨 Y2K 糖果波普配色 (Candy Pop Palette) */
+            /* 背景主色：活力紫 -> 甜蜜粉 */
+            --bg-grad-1: #a18cd1;
+            --bg-grad-2: #fbc2eb;
             
+            /* 起司元素 */
             --cheese-yellow: #FFD93D;
-            --cheese-orange: #FF9F43;
+            --cheese-shadow: #FF9F43; /* 橘色陰影，像烤過的起司 */
             
-            --panel-bg: rgba(255, 255, 255, 0.94); /* 面板不透明度微調，讓對比更強 */
-            --text-main: #4a2c45;
-            --text-light: #7a5c75;
+            /* 面板：牛奶白磨砂 */
+            --glass-bg: rgba(255, 255, 255, 0.85);
+            --glass-border: #fff;
             
-            --input-bg: #F3E5F5;
+            /* 文字顏色 */
+            --text-main: #5e3c58; /* 深紫灰色，對比強又柔和 */
+            --text-sub: #88607f;
             
-            --btn-bg: #FFD93D;
-            --btn-text: #fff;
-            
-            --accent-red: #FF6B6B;
-            --accent-green: #4CD137;
+            /* 裝飾色 */
+            --accent-green: #00b894;
+            --accent-blue: #0984e3;
         }
 
-        * { box-sizing: border-box; user-select: none; }
+        * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
 
         body { 
             font-family: 'Fredoka', sans-serif;
             margin: 0; 
             padding: 20px; 
-            text-align: center;
             min-height: 100vh;
-            /* 背景紋理：圓點稍微調淡一點，避免在深色背景上太搶眼 */
-            background-image: 
-                radial-gradient(rgba(255, 255, 255, 0.1) 2px, transparent 2px),
-                linear-gradient(135deg, var(--bg-gradient-1) 0%, var(--bg-gradient-2) 100%);
-            background-size: 30px 30px, 100% 100%;
-            background-attachment: fixed;
+            /* 背景：亮色漸層 */
+            background: linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%);
             color: var(--text-main);
             display: flex;
             align-items: center;
             justify-content: center;
-            padding-top: 100px;
+            overflow-x: hidden;
+            position: relative;
         }
 
+        /* 🧀 背景動態起司氣泡 (增加特色) */
+        .cheese-bg-circles {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: -1;
+            overflow: hidden;
+        }
+        .bg-circle {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            animation: floatUp 20s linear infinite;
+        }
+        /* 黃色氣泡 */
+        .bg-circle:nth-child(1) { width: 120px; height: 120px; left: 10%; top: 100%; animation-duration: 15s; background: rgba(255, 217, 61, 0.3); }
+        .bg-circle:nth-child(2) { width: 80px; height: 80px; left: 30%; top: 100%; animation-duration: 25s; animation-delay: 2s; }
+        .bg-circle:nth-child(3) { width: 150px; height: 150px; left: 70%; top: 100%; animation-duration: 18s; background: rgba(255, 217, 61, 0.2); }
+        .bg-circle:nth-child(4) { width: 60px; height: 60px; left: 50%; top: 100%; animation-duration: 22s; animation-delay: 5s; }
+        .bg-circle:nth-child(5) { width: 200px; height: 200px; left: 85%; top: 100%; animation-duration: 30s; }
+
+        @keyframes floatUp {
+            0% { transform: translateY(0) rotate(0deg); opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { transform: translateY(-120vh) rotate(360deg); opacity: 0; }
+        }
+
+        /* 主容器：牛奶白面板 */
         .container { 
             width: 100%;
-            max-width: 800px;
-            background: var(--panel-bg); 
+            max-width: 900px; 
+            background: var(--glass-bg); 
             padding: 40px; 
-            padding-top: 70px;
-            border-radius: 40px;
-            /* 陰影加深一點配合深色背景 */
-            box-shadow: 0 20px 50px rgba(50, 30, 60, 0.4), 
-                        inset 0 0 0 2px rgba(255,255,255,0.9);
-            backdrop-filter: blur(20px);
+            border-radius: 40px; /* 超圓潤 */
+            /* 像奶油一樣柔和的陰影 */
+            box-shadow: 0 20px 60px rgba(161, 140, 209, 0.4), 
+                        inset 0 0 0 5px rgba(255,255,255,0.6);
+            backdrop-filter: blur(10px);
             position: relative;
-            margin-top: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 60px;
         }
 
-        /* --- LOGO 區塊調整 --- */
+        /* --- LOGO 區塊 --- */
         .logo-container {
-            position: absolute;
-            top: -100px;
-            left: 50%;
-            transform: translateX(-50%);
             width: 100%;
             display: flex;
             justify-content: center;
-            align-items: center;
-            z-index: 10;
+            z-index: 20;
             pointer-events: none;
-        }
-
-        .logo-glow {
             position: absolute;
-            /* 尺寸再次縮小：變成小小的核心光點 */
-            width: 100px;
-            height: 100px;
-            /* 亮度調低，變得非常柔和隱約 */
-            background: rgba(255, 255, 255, 0.6);
-            top: 70px; /* 位置微調 */
-            z-index: -1;
-            border-radius: 50%;
-            filter: blur(18px);
+            top: -100px;
         }
 
         .game-logo {
-            max-width: 90%;
-            width: 480px;
+            width: 340px;
             height: auto;
             transform: rotate(-3deg);
-            pointer-events: auto;
+            /* 讓 Logo 像浮在上面的貼紙，陰影改暖色系 */
+            filter: drop-shadow(0 10px 0 rgba(0,0,0,0.1)) drop-shadow(0 20px 30px rgba(161, 140, 209, 0.4));
             transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-            
-            /* 維持白色輪廓光，這是讓 Logo 在深色背景清楚的關鍵 */
-            filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.9)) 
-                    drop-shadow(0 15px 25px rgba(0, 0, 0, 0.3));
         }
 
         .game-logo:hover {
-            transform: rotate(3deg) scale(1.05) translateY(-5px);
+            transform: rotate(2deg) scale(1.05) translateY(-5px);
         }
-        /* ----------------------- */
-
-        .subtitle {
-            color: var(--text-light);
-            font-size: 20px;
-            margin-top: 10px;
-            margin-bottom: 30px;
-            font-weight: 700;
-            letter-spacing: 2px;
-            text-transform: uppercase;
+        
+        /* 雙欄佈局 */
+        .split-layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 25px;
+            width: 100%;
+            margin-top: 30px;
         }
 
-        /* 輸入框 */
+        /* 內部卡片：純白底 + 虛線邊框 */
+        .panel-card {
+            background: #fff;
+            border-radius: 30px;
+            padding: 30px 25px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            min-height: 350px;
+            /* 縫線效果，增加可愛感 */
+            border: 3px dashed #e0e0e0;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.03);
+            transition: transform 0.2s;
+        }
+
+        /* 頂部標籤 */
+        .panel-label {
+            position: absolute;
+            top: -18px;
+            background: #fff;
+            color: var(--text-main);
+            padding: 8px 20px;
+            border-radius: 50px;
+            font-size: 16px;
+            font-weight: 800;
+            border: 3px solid var(--cheese-yellow); /* 黃色邊框 */
+            box-shadow: 0 5px 0 rgba(0,0,0,0.05);
+            letter-spacing: 1px;
+        }
+
+        .avatar-placeholder {
+            width: 110px; height: 110px;
+            background: #fff;
+            border-radius: 50%;
+            margin-bottom: 25px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 55px; 
+            border: 5px solid var(--cheese-yellow);
+            box-shadow: 0 10px 0 rgba(0,0,0,0.05);
+        }
+
+        /* 輸入框 - 淺紫色底，看起來很清爽 */
         input, select { 
             width: 100%; 
             padding: 18px; 
-            margin: 15px 0; 
-            border-radius: 25px; 
+            margin: 12px 0; 
+            border-radius: 20px; 
             border: 3px solid #fff;
-            background-color: var(--input-bg);
+            background-color: #F3E5F5; /* 淺紫 */
             color: var(--text-main);
-            font-size: 20px;
+            font-size: 18px;
             font-weight: 700;
             font-family: 'Fredoka', sans-serif;
             text-align: center;
             outline: none;
-            transition: 0.3s;
+            transition: 0.2s;
             box-shadow: inset 0 2px 5px rgba(0,0,0,0.05);
         }
-        
-        input::placeholder { color: #aaa; }
-
         input:focus, select:focus {
             background-color: #fff;
             border-color: var(--cheese-yellow);
-            box-shadow: 0 0 0 4px rgba(255, 217, 61, 0.2);
-            transform: scale(1.01);
+            box-shadow: 0 0 0 4px rgba(255, 217, 61, 0.3);
         }
 
-        /* 按鈕 */
+        /* 按鈕風格 - 起司塊風格 */
         button { 
             width: 100%; 
-            padding: 18px; 
-            margin: 15px 0; 
+            padding: 16px; 
+            margin: 12px 0; 
             border-radius: 50px;
             border: none;
-            background-color: var(--cheese-yellow);
-            color: #5e3c58;
-            box-shadow: 0 6px 0 var(--cheese-orange), 0 10px 20px rgba(0,0,0,0.1);
-            font-size: 24px;
+            background-color: #eee;
+            color: #555;
+            box-shadow: 0 6px 0 #ccc;
+            font-size: 20px;
             font-weight: 800;
             cursor: pointer; 
-            transition: all 0.15s;
+            transition: all 0.1s;
             position: relative;
             top: 0;
             font-family: 'Fredoka', sans-serif;
         }
+        button:hover:not(:disabled) { transform: translateY(-2px); filter: brightness(1.02); }
+        button:active:not(:disabled) { transform: translateY(6px); box-shadow: 0 0 0 #ccc; top: 6px; }
 
-        button:hover:not(:disabled) { 
-            transform: translateY(-2px);
-            filter: brightness(1.05);
-            box-shadow: 0 8px 0 var(--cheese-orange), 0 15px 25px rgba(255, 217, 61, 0.4);
+        .btn-primary {
+            background-color: var(--cheese-yellow);
+            color: var(--text-main);
+            /* 橘色陰影，看起來像好吃的起司 */
+            box-shadow: 0 6px 0 var(--cheese-shadow);
         }
-
-        button:active:not(:disabled) {
-            transform: translateY(6px);
-            box-shadow: 0 0 0 var(--cheese-orange);
-            top: 6px;
-        }
+        .btn-primary:hover:not(:disabled) { box-shadow: 0 8px 0 var(--cheese-shadow); }
+        .btn-primary:active:not(:disabled) { box-shadow: 0 0 0 var(--cheese-shadow); }
         
-        button:disabled {
-            background: #e0e0e0;
-            color: #aaa;
-            box-shadow: 0 6px 0 #bdbdbd;
-            cursor: not-allowed;
-            transform: none;
-        }
+        button:disabled { background: #e0e0e0; color: #aaa; box-shadow: 0 6px 0 #bdbdbd; cursor: not-allowed; }
 
-        /* 次要按鈕 */
-        .button-secondary {
-            background-color: #a18cd1;
-            color: white;
-            box-shadow: 0 6px 0 #846db5, 0 10px 20px rgba(0,0,0,0.1);
-        }
-        .button-secondary:hover:not(:disabled) { box-shadow: 0 8px 0 #846db5; }
-        .button-secondary:active:not(:disabled) { box-shadow: 0 0 0 #846db5; }
-
+        /* 規則文字 */
+        .rules-content { text-align: center; color: var(--text-main); }
+        .rules-icon { font-size: 64px; margin-bottom: 20px; text-shadow: 3px 3px 0 rgba(0,0,0,0.05); }
+        
+        /* 隱藏 */
         .hidden { display: none !important; }
 
-        /* 遊戲介面調整 */
+        /* --- 📱 手機版 RWD --- */
+        @media (max-width: 768px) {
+            body { padding: 15px; padding-top: 10px; align-items: flex-start; }
+            
+            .container {
+                padding: 25px 20px;
+                margin-top: 30px;
+                border-radius: 30px;
+                background: rgba(255, 255, 255, 0.92); /* 手機版不透明一點，閱讀較清楚 */
+            }
+
+            .logo-container {
+                position: relative;
+                top: 0;
+                margin-bottom: 10px;
+            }
+
+            .game-logo {
+                width: 280px;
+                transform: rotate(-2deg);
+            }
+
+            .split-layout {
+                grid-template-columns: 1fr;
+                gap: 30px;
+                margin-top: 10px;
+            }
+
+            .panel-card {
+                min-height: auto;
+                padding: 35px 20px 25px 20px;
+            }
+        }
+
+        /* --- 遊戲內元素 --- */
         .game-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: #fff;
-            padding: 15px 30px;
-            border-radius: 25px;
-            margin-bottom: 25px;
+            display: flex; justify-content: space-between; align-items: center;
+            background: #fff; padding: 15px 25px;
+            border-radius: 20px; margin-bottom: 25px; width: 100%;
             box-shadow: 0 5px 15px rgba(0,0,0,0.05);
         }
-
-        .score-box { 
-            font-size: 16px; 
-            color: var(--text-light); 
-            display: flex; flex-direction: column; align-items: center;
-        }
-        .score-box span { font-size: 32px; color: var(--cheese-orange); font-weight: 800; margin-top: 5px; }
-
+        .score-box { font-size: 15px; color: var(--text-sub); display: flex; flex-direction: column; align-items: center; }
+        .score-box span { font-size: 28px; color: var(--cheese-shadow); font-weight: 800; margin-top: 5px; }
+        
         .timer-circle {
-            width: 80px; height: 80px;
-            background: #fff; border-radius: 50%;
+            width: 70px; height: 70px; background: #fff; border-radius: 50%;
             display: flex; align-items: center; justify-content: center;
-            color: var(--accent-red); font-size: 36px; font-weight: 800;
-            border: 5px solid var(--input-bg);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            color: #FF6B6B; font-size: 32px; font-weight: 800;
+            border: 5px solid #F3E5F5;
+            box-shadow: 0 5px 10px rgba(0,0,0,0.05);
         }
 
         .question-box { 
-            background: white; 
-            color: var(--text-main);
-            padding: 30px; border-radius: 30px;
-            font-size: 24px; font-weight: 700;
-            margin: 25px 0; min-height: 120px;
+            background: #fff; color: var(--text-main);
+            padding: 25px; border-radius: 25px;
+            font-size: 22px; font-weight: 700;
+            margin: 20px 0; min-height: 120px;
             display: flex; align-items: center; justify-content: center;
+            /* 像便利貼一樣微微翹起 */
             box-shadow: 0 10px 20px rgba(161, 140, 209, 0.15);
-            border: 2px solid var(--input-bg);
+            border: 3px solid #F3E5F5;
         }
         
-        .options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 30px; }
+        .options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px; width: 100%; }
         
         .option-btn { 
             background: #fff; color: var(--text-main); 
             box-shadow: 0 6px 0 #e0e0e0;
-            border: 2px solid #f0f0f0;
-            min-height: 80px; font-size: 20px; line-height: 1.3;
+            border: 2px solid #f5f5f5;
+            min-height: 75px; font-size: 19px;
+            margin: 0;
         }
-        .option-btn:hover:not(:disabled) {
-            border-color: var(--cheese-yellow);
-            background: #FFFDF5;
-        }
+        .option-btn:hover:not(:disabled) { background: #FFFDF5; border-color: var(--cheese-yellow); }
         
-        .correct { background: var(--accent-green) !important; color: #fff !important; box-shadow: 0 6px 0 #218c74 !important; border:none !important;}
-        .wrong { background: var(--accent-red) !important; color: #fff !important; box-shadow: 0 6px 0 #b33939 !important; animation: shake 0.5s; border:none !important;}
-
-        @keyframes shake {
-            0%, 100% { transform: translateX(0); }
-            25% { transform: translateX(-6px); }
-            75% { transform: translateX(6px); }
-        }
+        .correct { background: var(--accent-green) !important; color: #fff !important; box-shadow: 0 6px 0 #008f72 !important; border:none !important; }
+        .wrong { background: #FF6B6B !important; color: #fff !important; box-shadow: 0 6px 0 #d63031 !important; border:none !important; }
 
         .room-code-display {
-            background: var(--input-bg); color: var(--text-main);
-            font-size: 50px; font-weight: 800; padding: 20px 40px;
-            border-radius: 25px; margin: 20px 0; letter-spacing: 5px;
+            background: #F3E5F5; color: var(--text-main);
+            font-size: 48px; font-weight: 800; padding: 25px;
+            border-radius: 20px; margin: 25px 0; letter-spacing: 6px;
             border: 4px dashed #fff;
             transform: rotate(-2deg);
         }
-
-        .avatar-placeholder {
-            width: 100px; height: 100px;
-            background: white; border-radius: 50%;
-            margin: 0 auto 20px; display: flex; align-items: center; justify-content: center;
-            font-size: 45px; border: 5px solid var(--cheese-yellow);
-            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
-        }
-
-        .player-card {
-            background: #fff; padding: 15px;
-            border-radius: 20px; margin: 10px 0; font-size: 20px;
-            display: flex; align-items: center; justify-content: center; gap: 10px;
-            box-shadow: 0 4px 0 #eee;
-            color: var(--text-main);
-        }
-        .player-card.host { border: 2px solid var(--cheese-yellow); background: #FFFDF0; }
-
-        .result-score { 
-            font-size: 64px; 
-            color: var(--cheese-yellow); 
-            font-weight: 800; margin: 20px 0; 
-            text-shadow: 3px 3px 0 #FF9F43;
-        }
-        #feedbackText { height: 30px; font-weight: 700; font-size: 24px; margin-top: 15px; text-shadow:none; }
 
     </style>
 </head>
 <body>
 
+<!-- 背景動態氣泡 -->
+<div class="cheese-bg-circles">
+    <div class="bg-circle"></div>
+    <div class="bg-circle"></div>
+    <div class="bg-circle"></div>
+    <div class="bg-circle"></div>
+    <div class="bg-circle"></div>
+</div>
+
 <div class="container">
     
-    <!-- Logo 浮在容器上面 -->
+    <!-- Logo 區塊 -->
     <div class="logo-container">
-        <!-- 縮得更小更隱約的背光 -->
-        <div class="logo-glow"></div> 
         <img src="https://raw.githubusercontent.com/meisuser/cheese-king-images/refs/heads/main/logo.png" alt="Cheese King" class="game-logo">
     </div>
 
-    <div class="subtitle">派對知識大亂鬥</div>
+    <!-- 1. 登入/規則區 (雙欄佈局) -->
+    <div id="loginSection" class="split-layout">
+        <!-- 左邊：個人資料 -->
+        <div class="panel-card">
+            <div class="panel-label">身份驗證</div>
+            <div class="avatar-placeholder">🥸</div>
+            <input type="text" id="username" placeholder="輸入你的暱稱" maxlength="8">
+            <button class="btn-primary" onclick="saveName()">進入大廳</button>
+        </div>
 
-    <!-- 1. 登入/暱稱區 -->
-    <div id="loginSection">
-        <div class="avatar-placeholder">😎</div>
-        <input type="text" id="username" placeholder="輸入你的大名" maxlength="8">
-        <button onclick="saveName()">進入遊戲 !</button>
+        <!-- 右邊：遊戲規則 -->
+        <div class="panel-card" style="background: rgba(255,255,255,0.6);">
+            <div class="panel-label">遊戲規則</div>
+            <div class="rules-content">
+                <div class="rules-icon">🎨💡</div>
+                <h3 style="margin: 0 0 15px 0; color: var(--text-main); font-size: 22px;">這是什麼？</h3>
+                <p style="margin: 0; line-height: 1.6; color: var(--text-sub); font-size: 16px;">
+                    這是一場知識的派對！<br>
+                    與朋友比拼速度與準確度<br>
+                    <strong style="color:var(--cheese-shadow)">5 題決勝負</strong><br>
+                    看看誰才是真正的起司之王！
+                </p>
+            </div>
+        </div>
     </div>
 
     <!-- 2. 大廳區 -->
-    <div id="lobbySection" class="hidden">
-        <h3>嗨，<span id="displayName" style="color:var(--cheese-orange)"></span> !</h3>
+    <div id="lobbySection" class="hidden panel-card" style="width: 100%; border:none; background: transparent; box-shadow: none;">
+        <h3>嗨，<span id="displayName" style="color:var(--cheese-shadow); font-size: 28px;"></span> !</h3>
         
-        <div style="background: #FFF5F7; padding: 20px; border-radius: 20px; margin-bottom: 20px; border: 2px solid #fff;">
-            <h4 style="color: var(--text-light); margin-top:0;">👑 創建房間</h4>
-            <select id="topicSelect">
-                <option value="https://docs.google.com/spreadsheets/d/e/2PACX-1vTuJvZW0HnnjkNcTYuTEFuupY6LZs4nXqSyJzEZ-MX_DnPiGyQMzF7BVH3RD_XtFtPwtaFhbpfToInM/pub?output=csv">📋 題庫一 (一般知識)</option>
-                <option value="https://docs.google.com/spreadsheets/d/e/2PACX-1vSjT8ACYkO2ybmy2kjW1BFr6HMVPqHtK1hmAf2tj4KgWrOQE2k3bEm8XOGvBVEyoRB6w9Qc9tV9mTXT/pub?output=csv">🔥 題庫二 (困難挑戰)</option>
-            </select>
-            <button onclick="createRoom()">創建新遊戲</button>
-        </div>
-        
-        <div style="background: #F3E5F5; padding: 20px; border-radius: 20px; border: 2px solid #fff;">
-            <h4 style="color: var(--text-light); margin-top:0;">🚀 加入朋友</h4>
-            <input type="number" id="roomCodeInput" placeholder="輸入 4 位數代碼">
-            <button class="button-secondary" onclick="joinRoom()">加入房間</button>
+        <div style="width: 100%; max-width: 450px;">
+            <div style="background: #FFF5F7; padding: 25px; border-radius: 20px; margin-bottom: 25px; border: 3px solid #fff; box-shadow: 0 5px 15px rgba(0,0,0,0.03);">
+                <h4 style="margin-top:0; color:var(--text-sub); margin-bottom: 15px;">👑 創建房間</h4>
+                <select id="topicSelect">
+                    <option value="https://docs.google.com/spreadsheets/d/e/2PACX-1vTuJvZW0HnnjkNcTYuTEFuupY6LZs4nXqSyJzEZ-MX_DnPiGyQMzF7BVH3RD_XtFtPwtaFhbpfToInM/pub?output=csv">📋 題庫一 (一般知識)</option>
+                    <option value="https://docs.google.com/spreadsheets/d/e/2PACX-1vSjT8ACYkO2ybmy2kjW1BFr6HMVPqHtK1hmAf2tj4KgWrOQE2k3bEm8XOGvBVEyoRB6w9Qc9tV9mTXT/pub?output=csv">🔥 題庫二 (困難挑戰)</option>
+                </select>
+                <button class="btn-primary" onclick="createRoom()">創建新遊戲</button>
+            </div>
+            
+            <div style="background: rgba(255,255,255,0.5); padding: 25px; border-radius: 20px; border: 3px solid #fff;">
+                <h4 style="margin-top:0; color:var(--text-sub); margin-bottom: 15px;">🚀 加入朋友</h4>
+                <input type="number" id="roomCodeInput" placeholder="輸入 4 位數代碼">
+                <button onclick="joinRoom()">加入房間</button>
+            </div>
         </div>
     </div>
 
     <!-- 3. 等待室 -->
-    <div id="waitingSection" class="hidden">
-        <h3 style="color: var(--text-light);">房間代碼</h3>
+    <div id="waitingSection" class="hidden panel-card" style="width: 100%;">
+        <h3 style="color: var(--text-sub); margin-bottom: 5px;">房間代碼</h3>
         <div class="room-code-display" id="displayRoomCode"></div>
-        <div id="playersList"></div>
+        <div id="playersList" style="width: 100%; max-width: 400px; display: flex; flex-direction: column; gap: 10px;"></div>
         
-        <div id="hostControls" class="hidden" style="margin-top: 20px;">
-            <p style="opacity: 0.6; margin-bottom: 15px; color:var(--text-main);">等待對手加入...</p>
-            <button id="startBtn" onclick="triggerStartGame()" disabled>開始遊戲 !</button>
+        <div id="hostControls" class="hidden" style="margin-top: 30px; width: 100%; max-width: 400px;">
+            <p style="opacity: 0.6; margin-bottom: 15px;">等待對手加入...</p>
+            <button class="btn-primary" id="startBtn" onclick="triggerStartGame()" disabled>開始遊戲 !</button>
         </div>
-        <p id="guestMessage" class="hidden" style="font-size: 20px; margin-top: 30px; color: var(--text-light);">等待房主開始...</p>
+        <p id="guestMessage" class="hidden" style="font-size: 18px; margin-top: 30px; color: var(--text-sub);">等待房主開始...</p>
     </div>
 
     <!-- 4. 遊戲區 -->
-    <div id="gameSection" class="hidden">
+    <div id="gameSection" class="hidden" style="width: 100%;">
         <div class="game-header">
             <div class="score-box">我方 <span><span id="myScore">0</span></span></div>
             <div class="timer-circle" id="timeLeft">10</div>
@@ -362,18 +412,18 @@
             <button class="option-btn" onclick="answer(3)">選項 C</button>
             <button class="option-btn" onclick="answer(4)">選項 D</button>
         </div>
-        <p id="feedbackText"></p>
+        <p id="feedbackText" style="height: 30px; font-weight: 700; font-size: 24px; margin-top: 15px;"></p>
     </div>
 
     <!-- 5. 結算區 -->
-    <div id="resultSection" class="hidden">
-        <h2 style="color:var(--text-light)">遊戲結束</h2>
-        <div class="avatar-placeholder" style="width: 120px; height: 120px; font-size: 60px;">🏆</div>
-        <h1 id="winnerName" style="margin: 10px 0; color:var(--text-main)"></h1>
-        <p class="result-score" id="finalScore"></p>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px;">
-            <button onclick="playAgain()">再來一局</button>
-            <button class="button-secondary" onclick="backToLobby()">回大廳</button>
+    <div id="resultSection" class="hidden panel-card" style="width: 100%;">
+        <h2 style="color:var(--text-sub); letter-spacing: 2px;">遊戲結束</h2>
+        <div class="avatar-placeholder" style="width: 130px; height: 130px; font-size: 65px; margin: 20px 0;">🏆</div>
+        <h1 id="winnerName" style="margin: 10px 0; color:var(--text-main); font-size: 32px;"></h1>
+        <p class="result-score" id="finalScore" style="font-size: 64px; color: var(--cheese-shadow); font-weight: 800; margin: 15px 0; text-shadow: 2px 2px 0 rgba(0,0,0,0.1);"></p>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 30px; width: 100%; max-width: 450px;">
+            <button class="btn-primary" onclick="playAgain()">再來一局</button>
+            <button onclick="backToLobby()">回大廳</button>
         </div>
     </div>
 </div>
@@ -468,9 +518,9 @@
             const data = snapshot.val();
             if(!data) return;
 
-            let listHtml = `<div class="player-card host">👑 房主: ${data.host}</div>`;
+            let listHtml = `<div style="background:#FFFDF5; padding:15px; border-radius:15px; color:var(--text-main); font-weight:700; border:2px solid var(--cheese-yellow);">👑 房主: ${data.host}</div>`;
             if(data.guest) {
-                listHtml += `<div class="player-card">⚔️ 挑戰者: ${data.guest}</div>`;
+                listHtml += `<div style="background:#fff; padding:15px; border-radius:15px; color:var(--text-main); font-weight:700; border:2px solid #ddd; margin-top:10px;">⚔️ 挑戰者: ${data.guest}</div>`;
                 if(playerRole === 'host') {
                     document.getElementById('startBtn').disabled = false;
                     document.getElementById('startBtn').innerText = "開始遊戲 !";
@@ -600,7 +650,6 @@
         let timeLeft = 10;
         document.getElementById('timeLeft').innerText = timeLeft;
         document.getElementById('timeLeft').style.color = "#333";
-        document.getElementById('timeLeft').style.borderColor = "#F3E5F5";
         
         clearInterval(timerInterval);
         timerInterval = setInterval(() => {
@@ -609,7 +658,6 @@
             
             if(timeLeft <= 3) {
                  document.getElementById('timeLeft').style.color = "#FF6B6B";
-                 document.getElementById('timeLeft').style.borderColor = "#FF6B6B";
             }
 
             if(timeLeft <= 0) {
@@ -668,23 +716,21 @@
         score = 0;
         currentQIndex = 0;
         showSection('lobbySection');
+        document.getElementById('loginSection').classList.add('hidden');
     }
 
     function showSection(id) {
-        document.getElementById('loginSection').classList.add('hidden');
-        document.getElementById('lobbySection').classList.add('hidden');
-        document.getElementById('waitingSection').classList.add('hidden');
-        document.getElementById('gameSection').classList.add('hidden');
-        document.getElementById('resultSection').classList.add('hidden');
+        const sections = ['loginSection', 'lobbySection', 'waitingSection', 'gameSection', 'resultSection'];
+        sections.forEach(sec => document.getElementById(sec).classList.add('hidden'));
         
         const el = document.getElementById(id);
         el.classList.remove('hidden');
         
         el.animate([
-            { transform: 'scale(0.9)', opacity: 0 },
+            { transform: 'scale(0.95)', opacity: 0 },
             { transform: 'scale(1)', opacity: 1 }
         ], {
-            duration: 300,
+            duration: 250,
             easing: 'cubic-bezier(0.18, 0.89, 0.32, 1.28)'
         });
     }
