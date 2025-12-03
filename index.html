@@ -557,6 +557,7 @@
     let score = 0;
     let timerInterval;
     let totalQuestions = 5;
+    let roomSeed = 0; // 用於同步題目的隨機種子
 
     window.saveName = () => {
         const input = document.getElementById('username').value;
@@ -569,6 +570,7 @@
     window.createRoom = () => {
         const roomCode = Math.floor(1000 + Math.random() * 9000).toString();
         const topicUrl = document.getElementById('topicSelect').value;
+        const seed = Math.random(); // 產生一個隨機種子，讓所有玩家題目順序一致
         
         set(ref(db, 'rooms/' + roomCode), {
             host: myName,
@@ -577,7 +579,9 @@
             topicUrl: topicUrl,
             hostScore: 0,
             guestScore: 0,
-            currentQuestion: 0
+            hostFinished: false, // 追蹤房主是否完成
+            guestFinished: false, // 追蹤客人是否完成
+            seed: seed
         });
 
         currentRoomId = roomCode;
@@ -620,6 +624,9 @@
             const data = snapshot.val();
             if(!data) return;
 
+            // 更新種子 (確保加入者拿到一樣的種子)
+            if(data.seed) roomSeed = data.seed;
+
             let listHtml = `<div style="background:#FFFDF5; padding:15px; border-radius:15px; color:var(--text-main); font-weight:700; border:2px solid var(--cheese-yellow);">👑 房主: ${data.host}</div>`;
             if(data.guest) {
                 listHtml += `<div style="background:#fff; padding:15px; border-radius:15px; color:var(--text-main); font-weight:700; border:2px solid #ddd; margin-top:10px;">⚔️ 挑戰者: ${data.guest}</div>`;
@@ -641,6 +648,14 @@
             if(data.status === 'playing' && document.getElementById('gameSection').classList.contains('hidden')) {
                 loadQuestionsAndStart(data.topicUrl);
             }
+
+            // 同步結束檢查：只有當雙方都完成 (hostFinished & guestFinished) 時才顯示結果
+            if(data.hostFinished && data.guestFinished) {
+                // 如果我還在遊戲畫面，才執行結束
+                if(!document.getElementById('gameSection').classList.contains('hidden')) {
+                     endGame();
+                }
+            }
         });
     }
 
@@ -651,7 +666,7 @@
     async function loadQuestionsAndStart(csvUrl) {
         showSection('gameSection');
         document.getElementById('questionText').innerText = "正在拆封題目...";
-
+        
         try {
             const response = await fetch(csvUrl);
             const text = await response.text();
@@ -671,6 +686,12 @@
         }
     }
 
+    // 簡單的偽隨機數生成器，用於確保雙方隨機順序一致
+    function seededRandom(seed) {
+        var x = Math.sin(seed++) * 10000;
+        return x - Math.floor(x);
+    }
+
     function parseCSV(csvText) {
         const lines = csvText.split('\n');
         questions = [];
@@ -684,14 +705,18 @@
                 });
             }
         }
-        questions.sort(() => Math.random() - 0.5);
+        
+        // 使用 Firebase 中的 seed 進行洗牌，確保題目順序相同
+        let currentSeed = roomSeed;
+        questions.sort(() => seededRandom(currentSeed++) - 0.5);
+        
         const count = Math.min(questions.length, totalQuestions);
         questions = questions.slice(0, count);
     }
 
     function renderQuestion() {
         if(currentQIndex >= questions.length) {
-            endGame();
+            waitForOpponent(); // 取代直接 endGame()
             return;
         }
 
@@ -748,6 +773,24 @@
         }
     }
 
+    function waitForOpponent() {
+        // 更新狀態為已完成
+        const finishKey = playerRole === 'host' ? 'hostFinished' : 'guestFinished';
+        update(ref(db, 'rooms/' + currentRoomId), { [finishKey]: true });
+
+        // UI 顯示等待中，利用現有元素不破壞 UI
+        document.getElementById('questionText').innerText = "等待對手完成中...";
+        document.getElementById('timeLeft').innerText = "⏳";
+        document.getElementById('feedbackText').innerText = "";
+        
+        // 禁用按鈕
+        const btns = document.querySelectorAll('.option-btn');
+        btns.forEach(b => b.disabled = true);
+        
+        // 停止計時器
+        clearInterval(timerInterval);
+    }
+
     function startTimer() {
         let timeLeft = 10;
         document.getElementById('timeLeft').innerText = timeLeft;
@@ -770,6 +813,7 @@
     }
 
     function endGame() {
+        clearInterval(timerInterval); // 確保清除
         showSection('resultSection');
         
         get(ref(db, 'rooms/' + currentRoomId)).then((snapshot) => {
@@ -788,11 +832,15 @@
     }
 
     window.playAgain = () => {
+        // 重置所有狀態
         update(ref(db, 'rooms/' + currentRoomId), { 
             status: 'waiting',
             hostScore: 0,
             guestScore: 0,
-            currentQuestion: 0
+            hostFinished: false,
+            guestFinished: false,
+            currentQuestion: 0,
+            seed: Math.random() // 重新產生新種子，下一局題目順序會變但雙方依然同步
         });
         
         score = 0;
@@ -822,6 +870,7 @@
     }
 
     function showSection(id) {
+        clearInterval(timerInterval); // 切換頁面時必定清除計時器
         const sections = ['loginSection', 'lobbySection', 'waitingSection', 'gameSection', 'resultSection'];
         sections.forEach(sec => document.getElementById(sec).classList.add('hidden'));
         
