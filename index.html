@@ -75,22 +75,14 @@
             max-width: 90%; 
             height: auto;
             cursor: pointer; 
-
-            /* 1. 初始狀態 */
             transform: rotate(-3deg);
             pointer-events: auto;
-            
-            /* 2. 動畫過渡：物理回彈感 */
             transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-            
-            /* 3. 扁平陰影效果 (無發光) */
             filter: drop-shadow(0 10px 0 rgba(0,0,0,0.1));
         }
 
-        /* 4. 滑鼠懸停：浮動動畫 */
         .game-logo:hover {
             transform: rotate(3deg) scale(1.05) translateY(-5px);
-            /* Hover 時的陰影 */
             filter: drop-shadow(0 15px 10px rgba(161, 140, 209, 0.5));
         }
 
@@ -174,7 +166,6 @@
             margin: 5px 0 15px 0;
         }
 
-        /* 大廳內的輸入框與選單更緊湊 */
         .lobby-action-card select, 
         .lobby-action-card input {
             background: rgba(255,255,255,0.8);
@@ -191,7 +182,6 @@
             border-color: var(--cheese-yellow);
         }
 
-        /* 紫色按鈕 (給加入房間用) */
         .btn-purple {
             background: #e1bee7; 
             color: #6a1b9a; 
@@ -233,12 +223,12 @@
         }
 
         .avatar-placeholder {
-            width: 110px; height: 110px;
+            width: 90px; height: 90px;
             background: #fff;
             border-radius: 50%;
-            margin-bottom: 25px;
+            margin-bottom: 15px;
             display: flex; align-items: center; justify-content: center;
-            font-size: 55px; 
+            font-size: 45px; 
             border: 5px solid var(--cheese-yellow);
             box-shadow: 0 10px 0 rgba(0,0,0,0.05);
         }
@@ -246,8 +236,8 @@
         /* 輸入框 */
         input, select { 
             width: 100%; 
-            padding: 18px; 
-            margin: 12px 0; 
+            padding: 15px; 
+            margin: 8px 0; 
             border-radius: 20px; 
             border: 3px solid #fff;
             background-color: #F3E5F5;
@@ -302,49 +292,38 @@
         
         .hidden { display: none !important; }
 
+        /* 切換登入/註冊的文字連結 */
+        .auth-toggle-link {
+            font-size: 14px;
+            color: var(--text-sub);
+            cursor: pointer;
+            text-decoration: underline;
+            margin-top: 5px;
+        }
+        .auth-toggle-link:hover { color: var(--text-main); }
+
         /* --- 📱 手機版 RWD 修正 --- */
         @media (max-width: 768px) {
             body { 
                 padding: 15px; 
-                justify-content: flex-start; /* 手機版從上到下排列，不強制置中，避免頭被切掉 */
+                justify-content: flex-start;
                 padding-top: 40px;
             }
-            
-            .logo-container {
-                margin-bottom: -20px; /* 手機版 Logo 稍微貼近一點 */
-                padding-top: 0;
-            }
-
-            .game-logo {
-                width: 280px; /* 縮小 Logo */
-            }
-
+            .logo-container { margin-bottom: -20px; padding-top: 0; }
+            .game-logo { width: 280px; }
             .container {
                 padding: 40px 20px 25px 20px;
                 border-radius: 30px;
                 background: rgba(255, 255, 255, 0.92);
             }
-
             .split-layout {
                 grid-template-columns: 1fr;
                 gap: 30px;
                 margin-top: 10px;
             }
-
-            /* 新版大廳 RWD */
-            .lobby-grid {
-                grid-template-columns: 1fr;
-                gap: 15px;
-            }
-            .lobby-action-card {
-                padding: 20px;
-                min-height: auto;
-            }
-
-            .panel-card {
-                min-height: auto;
-                padding: 35px 20px 25px 20px;
-            }
+            .lobby-grid { grid-template-columns: 1fr; gap: 15px; }
+            .lobby-action-card { padding: 20px; min-height: auto; }
+            .panel-card { min-height: auto; padding: 35px 20px 25px 20px; }
         }
 
         /* --- 遊戲內元素 --- */
@@ -418,14 +397,18 @@
 <!-- 主容器 -->
 <div class="container">
     
-    <!-- 1. 登入/規則區 (雙欄佈局) -->
+    <!-- 1. 登入/註冊區 (雙欄佈局) -->
     <div id="loginSection" class="split-layout">
-        <!-- 左邊：個人資料 -->
+        <!-- 左邊：帳號密碼 -->
         <div class="panel-card">
-            <div class="panel-label">身份驗證</div>
+            <div class="panel-label" id="authTitle">登入遊戲</div>
             <div class="avatar-placeholder">🥸</div>
-            <input type="text" id="username" placeholder="輸入你的暱稱" maxlength="8">
-            <button class="btn-primary" onclick="saveName()">進入大廳</button>
+            
+            <input type="text" id="username" placeholder="輸入帳號 (暱稱)" maxlength="12">
+            <input type="password" id="password" placeholder="輸入密碼" maxlength="12">
+            
+            <button class="btn-primary" id="authBtn" onclick="handleAuth()">登入</button>
+            <div class="auth-toggle-link" id="authToggle" onclick="toggleAuthMode()">還沒註冊？點此創建帳號</div>
         </div>
 
         <!-- 右邊：遊戲規則 -->
@@ -444,22 +427,18 @@
         </div>
     </div>
 
-    <!-- 2. 大廳區 (重新設計版) -->
+    <!-- 2. 大廳區 -->
     <div id="lobbySection" class="hidden panel-card" style="width: 100%; border:none; background: transparent; box-shadow: none; min-height: auto; padding: 0;">
-        
-        <!-- 歡迎標題 -->
         <div style="text-align: center; margin-bottom: 10px;">
             <h3 style="margin: 0; font-size: 22px; color: var(--text-sub);">歡迎回來</h3>
             <h1 style="margin: 5px 0 0 0; color: var(--text-main); font-size: 36px;">
                 <span id="displayName" style="background: linear-gradient(to right, #a18cd1, #fbc2eb); -webkit-background-clip: text; -webkit-text-fill-color: transparent; filter: drop-shadow(0 2px 0 rgba(0,0,0,0.1));"></span> 
                 <span style="font-size: 30px;">👋</span>
             </h1>
+            <div style="margin-top:5px; font-size:14px; color:var(--text-sub); cursor:pointer; text-decoration:underline;" onclick="logout()">登出</div>
         </div>
 
-        <!-- 雙欄功能區 -->
         <div class="lobby-grid">
-            
-            <!-- 左邊：創建房間 -->
             <div class="lobby-action-card card-create">
                 <div style="text-align: center; width: 100%;">
                     <div class="lobby-icon">👑</div>
@@ -472,7 +451,6 @@
                 <button class="btn-primary" onclick="createRoom()">創建新遊戲</button>
             </div>
 
-            <!-- 右邊：加入房間 -->
             <div class="lobby-action-card card-join">
                 <div style="text-align: center; width: 100%;">
                     <div class="lobby-icon">🚀</div>
@@ -481,7 +459,6 @@
                 </div>
                 <button class="btn-purple" onclick="joinRoom()">加入房間</button>
             </div>
-
         </div>
     </div>
 
@@ -533,7 +510,7 @@
 <!-- Firebase SDK -->
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getDatabase, ref, set, onValue, update, get } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+    import { getDatabase, ref, set, onValue, update, get, child } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
     const firebaseConfig = {
         apiKey: "AIzaSyAHWKkNpAG897-kwWf4EYkE-yihR9kDlbw",
@@ -549,6 +526,7 @@
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
 
+    // 全域變數
     let myName = "";
     let currentRoomId = "";
     let playerRole = "";
@@ -557,20 +535,123 @@
     let score = 0;
     let timerInterval;
     let totalQuestions = 5;
-    let roomSeed = 0; // 用於同步題目的隨機種子
+    let roomSeed = 0;
+    
+    // 登入狀態變數
+    let isRegisterMode = false;
 
-    window.saveName = () => {
-        const input = document.getElementById('username').value;
-        if(input.trim() === "") return alert("請輸入一個酷炫的暱稱！");
-        myName = input;
+    // --- 🔐 登入/註冊 邏輯開始 ---
+
+    // 切換 登入/註冊 模式
+    window.toggleAuthMode = () => {
+        isRegisterMode = !isRegisterMode;
+        const title = document.getElementById('authTitle');
+        const btn = document.getElementById('authBtn');
+        const link = document.getElementById('authToggle');
+
+        if(isRegisterMode) {
+            title.innerText = "註冊帳號";
+            btn.innerText = "立即註冊";
+            link.innerText = "已有帳號？點此登入";
+            btn.classList.replace('btn-primary', 'btn-purple'); // 換個顏色區分
+        } else {
+            title.innerText = "登入遊戲";
+            btn.innerText = "登入";
+            link.innerText = "還沒註冊？點此創建帳號";
+            btn.classList.replace('btn-purple', 'btn-primary');
+        }
+    }
+
+    // 處理按鈕點擊
+    window.handleAuth = () => {
+        const usernameInput = document.getElementById('username').value.trim();
+        const passwordInput = document.getElementById('password').value.trim();
+
+        if(!usernameInput || !passwordInput) {
+            alert("請輸入完整的帳號和密碼！");
+            return;
+        }
+
+        // Firebase Key 不能包含特殊符號，簡單過濾
+        if (/[.$#\[\]\/]/.test(usernameInput)) {
+            alert("帳號不能包含 . $ # [ ] / 等符號");
+            return;
+        }
+
+        if(isRegisterMode) {
+            registerUser(usernameInput, passwordInput);
+        } else {
+            loginUser(usernameInput, passwordInput);
+        }
+    }
+
+    // 註冊功能
+    function registerUser(username, password) {
+        const dbRef = ref(db);
+        get(child(dbRef, `users/${username}`)).then((snapshot) => {
+            if (snapshot.exists()) {
+                alert("這個帳號已經被註冊過了，請換一個！");
+            } else {
+                set(ref(db, 'users/' + username), {
+                    password: password,
+                    createdAt: new Date().toISOString()
+                }).then(() => {
+                    alert("註冊成功！歡迎加入 Cheese King 🧀");
+                    myName = username;
+                    enterLobby();
+                }).catch((err) => {
+                    alert("註冊失敗：" + err.message);
+                });
+            }
+        });
+    }
+
+    // 登入功能
+    function loginUser(username, password) {
+        const dbRef = ref(db);
+        get(child(dbRef, `users/${username}`)).then((snapshot) => {
+            if (snapshot.exists()) {
+                const userData = snapshot.val();
+                if(userData.password === password) {
+                    myName = username;
+                    enterLobby();
+                } else {
+                    alert("密碼錯誤，請再試一次！");
+                }
+            } else {
+                alert("找不到這個帳號，請先註冊喔！");
+                // 自動切換到註冊模式方便使用者
+                if(!isRegisterMode) window.toggleAuthMode();
+            }
+        }).catch((err) => {
+            alert("登入發生錯誤：" + err.message);
+        });
+    }
+
+    function enterLobby() {
         document.getElementById('displayName').innerText = myName;
+        // 清空密碼欄位以策安全
+        document.getElementById('password').value = "";
         showSection('lobbySection');
     }
+
+    window.logout = () => {
+        myName = "";
+        document.getElementById('username').value = "";
+        document.getElementById('password').value = "";
+        showSection('loginSection');
+        // 重置回登入模式
+        if(isRegisterMode) window.toggleAuthMode();
+    }
+
+    // --- 🔐 登入/註冊 邏輯結束 ---
+
+    // --- 🎮 遊戲核心邏輯 (保持不變) ---
 
     window.createRoom = () => {
         const roomCode = Math.floor(1000 + Math.random() * 9000).toString();
         const topicUrl = document.getElementById('topicSelect').value;
-        const seed = Math.random(); // 產生一個隨機種子，讓所有玩家題目順序一致
+        const seed = Math.random();
         
         set(ref(db, 'rooms/' + roomCode), {
             host: myName,
@@ -579,8 +660,8 @@
             topicUrl: topicUrl,
             hostScore: 0,
             guestScore: 0,
-            hostFinished: false, // 追蹤房主是否完成
-            guestFinished: false, // 追蹤客人是否完成
+            hostFinished: false,
+            guestFinished: false,
             seed: seed
         });
 
@@ -624,7 +705,6 @@
             const data = snapshot.val();
             if(!data) return;
 
-            // 更新種子 (確保加入者拿到一樣的種子)
             if(data.seed) roomSeed = data.seed;
 
             let listHtml = `<div style="background:#FFFDF5; padding:15px; border-radius:15px; color:var(--text-main); font-weight:700; border:2px solid var(--cheese-yellow);">👑 房主: ${data.host}</div>`;
@@ -649,9 +729,7 @@
                 loadQuestionsAndStart(data.topicUrl);
             }
 
-            // 同步結束檢查：只有當雙方都完成 (hostFinished & guestFinished) 時才顯示結果
             if(data.hostFinished && data.guestFinished) {
-                // 如果我還在遊戲畫面，才執行結束
                 if(!document.getElementById('gameSection').classList.contains('hidden')) {
                      endGame();
                 }
@@ -686,7 +764,6 @@
         }
     }
 
-    // 簡單的偽隨機數生成器，用於確保雙方隨機順序一致
     function seededRandom(seed) {
         var x = Math.sin(seed++) * 10000;
         return x - Math.floor(x);
@@ -706,7 +783,6 @@
             }
         }
         
-        // 使用 Firebase 中的 seed 進行洗牌，確保題目順序相同
         let currentSeed = roomSeed;
         questions.sort(() => seededRandom(currentSeed++) - 0.5);
         
@@ -716,7 +792,7 @@
 
     function renderQuestion() {
         if(currentQIndex >= questions.length) {
-            waitForOpponent(); // 取代直接 endGame()
+            waitForOpponent();
             return;
         }
 
@@ -774,20 +850,16 @@
     }
 
     function waitForOpponent() {
-        // 更新狀態為已完成
         const finishKey = playerRole === 'host' ? 'hostFinished' : 'guestFinished';
         update(ref(db, 'rooms/' + currentRoomId), { [finishKey]: true });
 
-        // UI 顯示等待中，利用現有元素不破壞 UI
         document.getElementById('questionText').innerText = "等待對手完成中...";
         document.getElementById('timeLeft').innerText = "⏳";
         document.getElementById('feedbackText').innerText = "";
         
-        // 禁用按鈕
         const btns = document.querySelectorAll('.option-btn');
         btns.forEach(b => b.disabled = true);
         
-        // 停止計時器
         clearInterval(timerInterval);
     }
 
@@ -813,7 +885,7 @@
     }
 
     function endGame() {
-        clearInterval(timerInterval); // 確保清除
+        clearInterval(timerInterval);
         showSection('resultSection');
         
         get(ref(db, 'rooms/' + currentRoomId)).then((snapshot) => {
@@ -832,7 +904,6 @@
     }
 
     window.playAgain = () => {
-        // 重置所有狀態
         update(ref(db, 'rooms/' + currentRoomId), { 
             status: 'waiting',
             hostScore: 0,
@@ -840,7 +911,7 @@
             hostFinished: false,
             guestFinished: false,
             currentQuestion: 0,
-            seed: Math.random() // 重新產生新種子，下一局題目順序會變但雙方依然同步
+            seed: Math.random()
         });
         
         score = 0;
@@ -870,7 +941,7 @@
     }
 
     function showSection(id) {
-        clearInterval(timerInterval); // 切換頁面時必定清除計時器
+        clearInterval(timerInterval);
         const sections = ['loginSection', 'lobbySection', 'waitingSection', 'gameSection', 'resultSection'];
         sections.forEach(sec => document.getElementById(sec).classList.add('hidden'));
         
