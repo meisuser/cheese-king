@@ -302,6 +302,15 @@
         }
         .auth-toggle-link:hover { color: var(--text-main); }
 
+        /* 修正漸層文字顯示 */
+        #displayName {
+            background: linear-gradient(to right, #a18cd1, #fbc2eb);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 2px 0 rgba(0,0,0,0.1));
+        }
+
         /* --- 📱 手機版 RWD 修正 --- */
         @media (max-width: 768px) {
             body { 
@@ -432,7 +441,7 @@
         <div style="text-align: center; margin-bottom: 10px;">
             <h3 style="margin: 0; font-size: 22px; color: var(--text-sub);">歡迎回來</h3>
             <h1 style="margin: 5px 0 0 0; color: var(--text-main); font-size: 36px;">
-                <span id="displayName" style="background: linear-gradient(to right, #a18cd1, #fbc2eb); -webkit-background-clip: text; -webkit-text-fill-color: transparent; filter: drop-shadow(0 2px 0 rgba(0,0,0,0.1));"></span> 
+                <span id="displayName"></span> 
                 <span style="font-size: 30px;">👋</span>
             </h1>
             <div style="margin-top:5px; font-size:14px; color:var(--text-sub); cursor:pointer; text-decoration:underline;" onclick="logout()">登出</div>
@@ -444,8 +453,7 @@
                     <div class="lobby-icon">👑</div>
                     <div class="lobby-title">我是房主</div>
                     <select id="topicSelect">
-                        <option value="https://docs.google.com/spreadsheets/d/e/2PACX-1vTuJvZW0HnnjkNcTYuTEFuupY6LZs4nXqSyJzEZ-MX_DnPiGyQMzF7BVH3RD_XtFtPwtaFhbpfToInM/pub?output=csv">📋 一般知識題庫</option>
-                        <option value="https://docs.google.com/spreadsheets/d/e/2PACX-1vSjT8ACYkO2ybmy2kjW1BFr6HMVPqHtK1hmAf2tj4KgWrOQE2k3bEm8XOGvBVEyoRB6w9Qc9tV9mTXT/pub?output=csv">🔥 困難挑戰題庫</option>
+                        <option>載入題庫中...</option>
                     </select>
                 </div>
                 <button class="btn-primary" onclick="createRoom()">創建新遊戲</button>
@@ -531,18 +539,51 @@
     let currentRoomId = "";
     let playerRole = "";
     let questions = [];
-    let currentQIndex = 0;
+    let localQIndex = -1; // 本地記錄的題號，用來比對 Server 是否換題
     let score = 0;
-    let timerInterval;
+    let syncTimerInterval;
     let totalQuestions = 5;
     let roomSeed = 0;
     
     // 登入狀態變數
     let isRegisterMode = false;
 
-    // --- 🔐 登入/註冊 邏輯開始 ---
+    // --- 🛠️ 預先載入：動態讀取題庫名稱 ---
+    async function initTopicSelect() {
+        const select = document.getElementById('topicSelect');
+        const topics = [
+            {url: "https://docs.google.com/spreadsheets/d/e/2PACX-1vTuJvZW0HnnjkNcTYuTEFuupY6LZs4nXqSyJzEZ-MX_DnPiGyQMzF7BVH3RD_XtFtPwtaFhbpfToInM/pub?output=csv", default: "一般知識題庫"},
+            {url: "https://docs.google.com/spreadsheets/d/e/2PACX-1vSjT8ACYkO2ybmy2kjW1BFr6HMVPqHtK1hmAf2tj4KgWrOQE2k3bEm8XOGvBVEyoRB6w9Qc9tV9mTXT/pub?output=csv", default: "困難挑戰題庫"}
+        ];
 
-    // 切換 登入/註冊 模式
+        select.innerHTML = ""; // 清空
+
+        for (const topic of topics) {
+            try {
+                const response = await fetch(topic.url);
+                const text = await response.text();
+                // 讀取 CSV 第一行第一格
+                const firstLine = text.split('\n')[0]; 
+                const topicName = firstLine.split(',')[0].replace(/"/g, '') || topic.default; // 去除引號
+
+                const option = document.createElement('option');
+                option.value = topic.url;
+                option.text = "📋 " + topicName;
+                select.appendChild(option);
+            } catch (e) {
+                // 失敗時使用預設名稱
+                const option = document.createElement('option');
+                option.value = topic.url;
+                option.text = "📋 " + topic.default;
+                select.appendChild(option);
+            }
+        }
+    }
+    // 頁面載入時執行
+    initTopicSelect();
+
+    // --- 🔐 登入/註冊 邏輯 ---
+
     window.toggleAuthMode = () => {
         isRegisterMode = !isRegisterMode;
         const title = document.getElementById('authTitle');
@@ -553,7 +594,7 @@
             title.innerText = "註冊帳號";
             btn.innerText = "立即註冊";
             link.innerText = "已有帳號？點此登入";
-            btn.classList.replace('btn-primary', 'btn-purple'); // 換個顏色區分
+            btn.classList.replace('btn-primary', 'btn-purple');
         } else {
             title.innerText = "登入遊戲";
             btn.innerText = "登入";
@@ -562,7 +603,6 @@
         }
     }
 
-    // 處理按鈕點擊
     window.handleAuth = () => {
         const usernameInput = document.getElementById('username').value.trim();
         const passwordInput = document.getElementById('password').value.trim();
@@ -572,20 +612,15 @@
             return;
         }
 
-        // Firebase Key 不能包含特殊符號，簡單過濾
         if (/[.$#\[\]\/]/.test(usernameInput)) {
             alert("帳號不能包含 . $ # [ ] / 等符號");
             return;
         }
 
-        if(isRegisterMode) {
-            registerUser(usernameInput, passwordInput);
-        } else {
-            loginUser(usernameInput, passwordInput);
-        }
+        if(isRegisterMode) registerUser(usernameInput, passwordInput);
+        else loginUser(usernameInput, passwordInput);
     }
 
-    // 註冊功能
     function registerUser(username, password) {
         const dbRef = ref(db);
         get(child(dbRef, `users/${username}`)).then((snapshot) => {
@@ -606,7 +641,6 @@
         });
     }
 
-    // 登入功能
     function loginUser(username, password) {
         const dbRef = ref(db);
         get(child(dbRef, `users/${username}`)).then((snapshot) => {
@@ -620,7 +654,6 @@
                 }
             } else {
                 alert("找不到這個帳號，請先註冊喔！");
-                // 自動切換到註冊模式方便使用者
                 if(!isRegisterMode) window.toggleAuthMode();
             }
         }).catch((err) => {
@@ -630,7 +663,6 @@
 
     function enterLobby() {
         document.getElementById('displayName').innerText = myName;
-        // 清空密碼欄位以策安全
         document.getElementById('password').value = "";
         showSection('lobbySection');
     }
@@ -640,19 +672,17 @@
         document.getElementById('username').value = "";
         document.getElementById('password').value = "";
         showSection('loginSection');
-        // 重置回登入模式
         if(isRegisterMode) window.toggleAuthMode();
     }
 
-    // --- 🔐 登入/註冊 邏輯結束 ---
-
-    // --- 🎮 遊戲核心邏輯 (保持不變) ---
+    // --- 🎮 遊戲核心邏輯 ---
 
     window.createRoom = () => {
         const roomCode = Math.floor(1000 + Math.random() * 9000).toString();
         const topicUrl = document.getElementById('topicSelect').value;
         const seed = Math.random();
         
+        // 🆕 初始化時加入時間控制欄位
         set(ref(db, 'rooms/' + roomCode), {
             host: myName,
             guest: "",
@@ -660,9 +690,9 @@
             topicUrl: topicUrl,
             hostScore: 0,
             guestScore: 0,
-            hostFinished: false,
-            guestFinished: false,
-            seed: seed
+            seed: seed,
+            currentQIndex: -1, // -1 代表還沒開始
+            qStartTime: 0      // 題目開始的時間戳
         });
 
         currentRoomId = roomCode;
@@ -700,6 +730,7 @@
         });
     }
 
+    // 🆕 核心監聽邏輯：改為監聽 "currentQIndex" 來同步
     function listenToRoom(roomId) {
         onValue(ref(db, 'rooms/' + roomId), (snapshot) => {
             const data = snapshot.val();
@@ -707,6 +738,7 @@
 
             if(data.seed) roomSeed = data.seed;
 
+            // 1. 更新等待室介面
             let listHtml = `<div style="background:#FFFDF5; padding:15px; border-radius:15px; color:var(--text-main); font-weight:700; border:2px solid var(--cheese-yellow);">👑 房主: ${data.host}</div>`;
             if(data.guest) {
                 listHtml += `<div style="background:#fff; padding:15px; border-radius:15px; color:var(--text-main); font-weight:700; border:2px solid #ddd; margin-top:10px;">⚔️ 挑戰者: ${data.guest}</div>`;
@@ -717,6 +749,7 @@
             }
             document.getElementById('playersList').innerHTML = listHtml;
 
+            // 2. 更新分數
             if(playerRole === 'host') {
                 document.getElementById('myScore').innerText = data.hostScore;
                 document.getElementById('oppScore').innerText = data.guestScore;
@@ -725,42 +758,57 @@
                 document.getElementById('oppScore').innerText = data.hostScore;
             }
 
-            if(data.status === 'playing' && document.getElementById('gameSection').classList.contains('hidden')) {
-                loadQuestionsAndStart(data.topicUrl);
-            }
-
-            if(data.hostFinished && data.guestFinished) {
-                if(!document.getElementById('gameSection').classList.contains('hidden')) {
-                     endGame();
+            // 3. 遊戲狀態控制
+            if(data.status === 'playing') {
+                // 如果本地還沒進遊戲畫面，且題目還沒載入，先載入
+                if(questions.length === 0) {
+                     loadQuestionsAndParse(data.topicUrl).then(() => {
+                        handleGameSync(data); // 載入完後執行同步
+                     });
+                } else {
+                    handleGameSync(data); // 題目已載入，直接同步
                 }
+            } else if (data.status === 'finished') {
+                endGame(data);
             }
         });
     }
 
     window.triggerStartGame = () => {
-        update(ref(db, 'rooms/' + currentRoomId), { status: 'playing' });
+        // 房主觸發開始：設定第一題和開始時間
+        update(ref(db, 'rooms/' + currentRoomId), { 
+            status: 'playing',
+            currentQIndex: 0,
+            qStartTime: Date.now()
+        });
     }
 
-    async function loadQuestionsAndStart(csvUrl) {
-        showSection('gameSection');
+    // 🆕 處理遊戲畫面同步 (核心同步函式)
+    function handleGameSync(data) {
+        if(document.getElementById('gameSection').classList.contains('hidden')) {
+            showSection('gameSection');
+        }
+
+        // 檢查是否換題了 (Server 的 index 比本地大)
+        if(data.currentQIndex > localQIndex) {
+            localQIndex = data.currentQIndex;
+            renderQuestion(localQIndex);
+        }
+
+        // 啟動倒數計時器 (依賴 Server 時間)
+        startSyncTimer(data.qStartTime);
+    }
+
+    async function loadQuestionsAndParse(csvUrl) {
         document.getElementById('questionText').innerText = "正在拆封題目...";
-        
         try {
             const response = await fetch(csvUrl);
             const text = await response.text();
             parseCSV(text);
-            
-            if(questions.length === 0) {
-                alert("這個題庫是空的！");
-                backToLobby();
-                return;
-            }
-
-            currentQIndex = 0;
-            score = 0;
-            renderQuestion();
+            if(questions.length === 0) throw new Error("題庫為空");
         } catch (error) {
             alert("讀取失敗: " + error);
+            backToLobby();
         }
     }
 
@@ -785,39 +833,86 @@
         
         let currentSeed = roomSeed;
         questions.sort(() => seededRandom(currentSeed++) - 0.5);
-        
-        const count = Math.min(questions.length, totalQuestions);
-        questions = questions.slice(0, count);
+        questions = questions.slice(0, totalQuestions);
     }
 
-    function renderQuestion() {
-        if(currentQIndex >= questions.length) {
-            waitForOpponent();
+    // 渲染題目
+    function renderQuestion(index) {
+        if(index >= questions.length) {
+            // 題目結束，等待所有人完成或直接顯示結果
+            // 這裡不做動作，等待 server status 變更為 finished
             return;
         }
 
-        const q = questions[currentQIndex];
+        const q = questions[index];
         document.getElementById('questionText').innerText = q.q;
         
         const btns = document.querySelectorAll('.option-btn');
-        btns.forEach((btn, index) => {
-            btn.innerText = q.options[index];
+        btns.forEach((btn, idx) => {
+            btn.innerText = q.options[idx];
             btn.disabled = false;
             btn.classList.remove('correct', 'wrong');
-            btn.onclick = () => window.answer(index + 1);
+            btn.onclick = () => window.answer(idx + 1);
         });
 
         document.getElementById('feedbackText').innerText = "";
-        startTimer();
     }
 
-    window.answer = (choice) => {
-        clearInterval(timerInterval);
+    // 🆕 同步計時器
+    function startSyncTimer(startTime) {
+        clearInterval(syncTimerInterval);
         
+        // 立即執行一次
+        updateTimerUI(startTime);
+
+        syncTimerInterval = setInterval(() => {
+            updateTimerUI(startTime);
+        }, 100); // 這裡的頻率只影響 UI 滑順度，不影響邏輯
+    }
+
+    function updateTimerUI(startTime) {
+        if(localQIndex >= questions.length) return; // 結束後不計時
+
+        const now = Date.now();
+        const elapsed = now - startTime;
+        const timeLimit = 10000; // 10秒
+        const remaining = Math.max(0, Math.ceil((timeLimit - elapsed) / 1000));
+
+        const timerEl = document.getElementById('timeLeft');
+        timerEl.innerText = remaining;
+        timerEl.style.color = remaining <= 3 ? "#FF6B6B" : "#333";
+
+        // 時間到邏輯：由房主負責觸發下一題
+        if(elapsed > timeLimit + 1000) { // 給 1 秒緩衝
+            if(playerRole === 'host') {
+                triggerNextQuestion();
+            }
+        }
+    }
+
+    // 🆕 房主觸發下一題
+    function triggerNextQuestion() {
+        const nextIndex = localQIndex + 1;
+        
+        if(nextIndex >= totalQuestions) {
+            // 遊戲結束
+            update(ref(db, 'rooms/' + currentRoomId), { status: 'finished' });
+        } else {
+            // 下一題，並重置時間
+            update(ref(db, 'rooms/' + currentRoomId), { 
+                currentQIndex: nextIndex,
+                qStartTime: Date.now()
+            });
+        }
+    }
+
+    // 作答邏輯
+    window.answer = (choice) => {
+        // 禁止重複作答
         const btns = document.querySelectorAll('.option-btn');
         btns.forEach(b => b.disabled = true);
 
-        const correctAns = questions[currentQIndex].ans;
+        const correctAns = questions[localQIndex].ans;
         const isCorrect = (choice === correctAns);
 
         if(isCorrect) {
@@ -827,18 +922,14 @@
             score += 100;
             updateScore();
         } else {
-            if(choice > 0) btns[choice-1].classList.add('wrong');
+            btns[choice-1].classList.add('wrong');
             if(correctAns > 0 && correctAns <= 4) {
                  btns[correctAns-1].classList.add('correct'); 
             }
             document.getElementById('feedbackText').innerText = "哎呀答錯了... 😱";
             document.getElementById('feedbackText').style.color = "#FF6B6B";
         }
-
-        setTimeout(() => {
-            currentQIndex++;
-            renderQuestion();
-        }, 2000);
+        // 注意：這裡不再自己呼叫 renderQuestion，而是等待 Server 時間到切換
     }
 
     function updateScore() {
@@ -849,58 +940,20 @@
         }
     }
 
-    function waitForOpponent() {
-        const finishKey = playerRole === 'host' ? 'hostFinished' : 'guestFinished';
-        update(ref(db, 'rooms/' + currentRoomId), { [finishKey]: true });
-
-        document.getElementById('questionText').innerText = "等待對手完成中...";
-        document.getElementById('timeLeft').innerText = "⏳";
-        document.getElementById('feedbackText').innerText = "";
-        
-        const btns = document.querySelectorAll('.option-btn');
-        btns.forEach(b => b.disabled = true);
-        
-        clearInterval(timerInterval);
-    }
-
-    function startTimer() {
-        let timeLeft = 10;
-        document.getElementById('timeLeft').innerText = timeLeft;
-        document.getElementById('timeLeft').style.color = "#333";
-        
-        clearInterval(timerInterval);
-        timerInterval = setInterval(() => {
-            timeLeft--;
-            document.getElementById('timeLeft').innerText = timeLeft;
-            
-            if(timeLeft <= 3) {
-                 document.getElementById('timeLeft').style.color = "#FF6B6B";
-            }
-
-            if(timeLeft <= 0) {
-                clearInterval(timerInterval);
-                window.answer(-1); 
-            }
-        }, 1000);
-    }
-
-    function endGame() {
-        clearInterval(timerInterval);
+    function endGame(data) {
+        clearInterval(syncTimerInterval);
         showSection('resultSection');
         
-        get(ref(db, 'rooms/' + currentRoomId)).then((snapshot) => {
-            const data = snapshot.val();
-            let msg = "";
-            let myFinal = playerRole === 'host' ? data.hostScore : data.guestScore;
-            let oppFinal = playerRole === 'host' ? data.guestScore : data.hostScore;
+        let msg = "";
+        let myFinal = playerRole === 'host' ? data.hostScore : data.guestScore;
+        let oppFinal = playerRole === 'host' ? data.guestScore : data.hostScore;
 
-            if(myFinal > oppFinal) msg = "你贏了！🏆";
-            else if(myFinal < oppFinal) msg = "再接再厲 💪";
-            else msg = "平手！🤝";
+        if(myFinal > oppFinal) msg = "你贏了！🏆";
+        else if(myFinal < oppFinal) msg = "再接再厲 💪";
+        else msg = "平手！🤝";
 
-            document.getElementById('winnerName').innerText = msg;
-            document.getElementById('finalScore').innerText = `${myFinal} - ${oppFinal}`;
-        });
+        document.getElementById('winnerName').innerText = msg;
+        document.getElementById('finalScore').innerText = `${myFinal} - ${oppFinal}`;
     }
 
     window.playAgain = () => {
@@ -908,14 +961,14 @@
             status: 'waiting',
             hostScore: 0,
             guestScore: 0,
-            hostFinished: false,
-            guestFinished: false,
-            currentQuestion: 0,
+            currentQIndex: -1,
+            qStartTime: 0,
             seed: Math.random()
         });
         
         score = 0;
-        currentQIndex = 0;
+        localQIndex = -1;
+        questions = []; // 清空題目以便重新抓取或重洗
         
         document.getElementById('displayRoomCode').innerText = currentRoomId;
         
@@ -935,13 +988,13 @@
         currentRoomId = "";
         playerRole = "";
         score = 0;
-        currentQIndex = 0;
+        localQIndex = -1;
+        questions = [];
         showSection('lobbySection');
         document.getElementById('loginSection').classList.add('hidden');
     }
 
     function showSection(id) {
-        clearInterval(timerInterval);
         const sections = ['loginSection', 'lobbySection', 'waitingSection', 'gameSection', 'resultSection'];
         sections.forEach(sec => document.getElementById(sec).classList.add('hidden'));
         
