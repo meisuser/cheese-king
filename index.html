@@ -639,6 +639,8 @@
                 }).then(() => {
                     alert("註冊成功！歡迎加入 Cheese King 🧀");
                     myName = username;
+                    // 🔥 修正：註冊成功後儲存帳號
+                    localStorage.setItem('cheese_king_username', username);
                     enterLobby();
                 }).catch((err) => {
                     alert("註冊失敗：" + err.message);
@@ -654,6 +656,8 @@
                 const userData = snapshot.val();
                 if(userData.password === password) {
                     myName = username;
+                    // 🔥 修正：登入成功後儲存帳號
+                    localStorage.setItem('cheese_king_username', username);
                     enterLobby();
                 } else {
                     alert("密碼錯誤，請再試一次！");
@@ -677,6 +681,8 @@
         myName = "";
         document.getElementById('username').value = "";
         document.getElementById('password').value = "";
+        // 🔥 修正：登出時清除儲存的帳號
+        localStorage.removeItem('cheese_king_username');
         showSection('loginSection');
         if(isRegisterMode) window.toggleAuthMode();
     }
@@ -1015,6 +1021,16 @@
             easing: 'cubic-bezier(0.18, 0.89, 0.32, 1.28)'
         });
     }
+
+    // 🔥 修正：頁面載入時檢查是否已有儲存的帳號
+    (function checkAutoLogin() {
+        const savedUser = localStorage.getItem('cheese_king_username');
+        if(savedUser) {
+            myName = savedUser;
+            enterLobby();
+        }
+    })();
+
 </script>
 
 </body>
