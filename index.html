@@ -920,7 +920,7 @@
         }, 100); 
     }
 
-    // 🔥 核心修復：計算邏輯完全重寫
+    // 🔥 核心修復：計算邏輯與逾時處理
     function updateTimerUI(startTime) {
         if(localQIndex >= questions.length || isPaused) return; 
 
@@ -937,14 +937,25 @@
         timerEl.innerText = remaining;
         timerEl.style.color = remaining <= 3 ? "#FF6B6B" : "#333";
 
-        // 🔥 核心修復：競爭條件 (Race Condition) 處理
-        // 增加 500ms 緩衝，並嚴格檢查狀態
-        if(elapsed > timeLimit + 500) { 
-            if(!isTransitioning && !isPaused) {
+        // 🔥 核心修復：當時間到時，強制視為「已作答」，觸發 Firebase 狀態變更
+        if(elapsed > timeLimit) { 
+            if(!localHasAnswered) {
+                // 1. 本地鎖定
+                localHasAnswered = true;
+
+                // 2. 禁用按鈕
+                const btns = document.querySelectorAll('.option-btn');
+                btns.forEach(b => b.disabled = true);
+
+                // 3. 顯示逾時訊息
+                document.getElementById('feedbackText').innerText = "時間到！ ⏰";
+                document.getElementById('feedbackText').style.color = "#FF6B6B";
+
+                // 4. 更新 Firebase 狀態為「已作答」 (由 listenToRoom 處理後續)
                 if(playerRole === 'host') {
-                    // 上鎖防止重複觸發
-                    isTransitioning = true;
-                    triggerNextQuestion();
+                    update(ref(db, 'rooms/' + currentRoomId), { hostAnswered: true });
+                } else {
+                    update(ref(db, 'rooms/' + currentRoomId), { guestAnswered: true });
                 }
             }
         }
