@@ -670,13 +670,17 @@
 
     window.createRoom = () => {
         stopTimer();
+        
+        // 🔥🔥🔥 強制重置全域變數，確保沒有舊的髒東西殘留
+        questions = [];
+        globalTimeLimit = 10;
+        
         const roomCode = Math.floor(1000 + Math.random() * 9000).toString();
         const topicUrl = document.getElementById('topicSelect').value;
         const seed = Math.random();
         
         const roomRef = ref(db, 'rooms/' + roomCode);
         
-        // 🔥 重要修改：先設定房間，然後**立刻**讀取 CSV 更新時間
         currentRoomId = roomCode;
         playerRole = "host";
 
@@ -692,7 +696,7 @@
             qStartTime: 0,      
             hostAnswered: false,
             guestAnswered: false,
-            timeLimit: 10 // 預設值，之後會立刻被覆寫
+            timeLimit: 10
         }).then(() => {
             // 🔥 在此處立刻讀取 CSV，確保等待期間 Firebase 就更新到正確時間
             loadQuestionsAndParse(topicUrl);
@@ -709,6 +713,11 @@
 
     window.joinRoom = () => {
         stopTimer();
+        
+        // 🔥 重置本地狀態
+        questions = [];
+        globalTimeLimit = 10;
+        
         const code = document.getElementById('roomCodeInput').value;
         if(code.length !== 4) return alert("請輸入 4 位數代碼！");
 
@@ -747,7 +756,7 @@
 
             if(data.seed) roomSeed = data.seed;
             
-            // 🔥 核心修復：強制同步伺服器時間設定，每次變更都更新
+            // 🔥 強制同步伺服器時間設定，每次變更都更新
             if(data.timeLimit && data.timeLimit > 0) {
                 const newTimeLimit = data.timeLimit;
                 if(globalTimeLimit !== newTimeLimit) {
@@ -851,6 +860,10 @@
     }
 
     async function loadQuestionsAndParse(csvUrl) {
+        // 🔥 雙重保險：每次載入都清空
+        questions = [];
+        globalTimeLimit = 10;
+        
         try {
             // 🔥 加了時間戳強制刷新緩存
             const cleanUrl = csvUrl.includes('?') ? csvUrl : csvUrl + '?';
@@ -870,7 +883,6 @@
             if(questions.length === 0) throw new Error("題庫為空");
         } catch (error) {
             console.error("Loading Error:", error);
-            // 如果是在創建房間時出錯，不要跳回大廳，只顯示錯誤
             if(document.getElementById('waitingSection').classList.contains('hidden')) {
                  alert("讀取失敗: " + error);
                  backToLobby();
@@ -886,15 +898,19 @@
     function parseCSV(csvText) {
         const lines = csvText.split('\n');
         
+        console.log("🔍 CSV 第一行:", lines[0]);
+        
         try {
             if (lines.length > 0) {
                 const headerRow = lines[0].split(',');
                 if (headerRow.length >= 8) {
                     const h1Val = headerRow[7].replace(/["\r]/g, '').trim(); 
+                    console.log("🔍 H1 欄位值:", h1Val);
+                    
                     const parsedTime = parseInt(h1Val);
                     if (!isNaN(parsedTime) && parsedTime > 0) {
                         globalTimeLimit = parsedTime;
-                        console.log("Parsed Time Limit:", globalTimeLimit);
+                        console.log("🔍 解析後時間:", parsedTime);
                     } else {
                         globalTimeLimit = 10;
                     }
