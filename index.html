@@ -508,7 +508,6 @@
     const offsetRef = ref(db, ".info/serverTimeOffset");
     onValue(offsetRef, (snap) => {
       serverTimeOffset = snap.val();
-      // console.log("伺服器時差已校正:", serverTimeOffset);
     });
 
     // 全域變數
@@ -521,16 +520,16 @@
     let syncTimerInterval = null;
     let totalQuestions = 5;
     let roomSeed = 0;
-    
-    // ✨ 全域時間限制變數 (預設 10)
     let globalTimeLimit = 10;
     
     // 🔐 狀態鎖
     let isTransitioning = false;
     let localHasAnswered = false;
     let isPaused = false;
-
     let isRegisterMode = false;
+    
+    // 🔥 計時器追蹤變數
+    let currentTimerQuestionIndex = -1;
 
     // 🔥 統一停止計時器
     function stopTimer() {
@@ -538,6 +537,7 @@
             clearInterval(syncTimerInterval);
             syncTimerInterval = null;
         }
+        currentTimerQuestionIndex = -1;
     }
 
     async function initTopicSelect() {
@@ -551,7 +551,7 @@
 
         for (const topic of topics) {
             try {
-                // 🔥 這裡也加了防緩存，避免選單名稱也不更新
+                // 🔥 防緩存，避免選單名稱也不更新
                 const response = await fetch(topic.url + "&t=" + Date.now());
                 const text = await response.text();
                 const firstLine = text.split('\n')[0]; 
@@ -675,6 +675,11 @@
         const seed = Math.random();
         
         const roomRef = ref(db, 'rooms/' + roomCode);
+        
+        // 🔥 重要修改：先設定房間，然後**立刻**讀取 CSV 更新時間
+        currentRoomId = roomCode;
+        playerRole = "host";
+
         set(roomRef, {
             host: myName,
             guest: "",
@@ -687,13 +692,14 @@
             qStartTime: 0,      
             hostAnswered: false,
             guestAnswered: false,
-            timeLimit: 10 // 預設值，之後會被覆寫
+            timeLimit: 10 // 預設值，之後會立刻被覆寫
+        }).then(() => {
+            // 🔥 在此處立刻讀取 CSV，確保等待期間 Firebase 就更新到正確時間
+            loadQuestionsAndParse(topicUrl);
         });
 
         onDisconnect(roomRef).remove();
 
-        currentRoomId = roomCode;
-        playerRole = "host";
         document.getElementById('displayRoomCode').innerText = roomCode;
         document.getElementById('hostControls').classList.remove('hidden');
         
@@ -741,9 +747,13 @@
 
             if(data.seed) roomSeed = data.seed;
             
-            // 🔥 核心修復：強制同步伺服器時間設定
+            // 🔥 核心修復：強制同步伺服器時間設定，每次變更都更新
             if(data.timeLimit && data.timeLimit > 0) {
-                globalTimeLimit = data.timeLimit;
+                const newTimeLimit = data.timeLimit;
+                if(globalTimeLimit !== newTimeLimit) {
+                    console.log(`⏱️ 同步時間: ${globalTimeLimit} -> ${newTimeLimit}`);
+                    globalTimeLimit = newTimeLimit;
+                }
             }
 
             let listHtml = `<div style="background:#FFFDF5; padding:15px; border-radius:15px; color:var(--text-main); font-weight:700; border:2px solid var(--cheese-yellow);">👑 房主: ${data.host}</div>`;
@@ -801,7 +811,6 @@
         });
     }
 
-    // 🔥 確保在開始遊戲時不重置變數
     window.triggerStartGame = () => {
         update(ref(db, 'rooms/' + currentRoomId), { 
             status: 'playing',
@@ -817,7 +826,10 @@
             showSection('gameSection');
         }
 
+        // 🔥 核心修復：換題時強制清理計時器
         if(data.currentQIndex > localQIndex) {
+            stopTimer(); // 👈 這裡一定要停掉舊的
+
             isTransitioning = false; 
             localHasAnswered = false;
             isPaused = false; 
@@ -825,17 +837,22 @@
             renderQuestion(localQIndex);
         }
 
+        // 🔥 核心修復：防止重複啟動計時器 (Debounce)
         if (!isPaused && !data.hostAnswered && !data.guestAnswered) { 
-             startSyncTimer(data.qStartTime);
+             // 只有當計時器追蹤的題目 index 不一樣時，才啟動新的計時器
+             if(currentTimerQuestionIndex !== data.currentQIndex) {
+                 stopTimer(); 
+                 currentTimerQuestionIndex = data.currentQIndex;
+                 startSyncTimer(data.qStartTime);
+             }
         } else if (isPaused) {
              stopTimer();
         }
     }
 
     async function loadQuestionsAndParse(csvUrl) {
-        document.getElementById('questionText').innerText = "正在拆封題目...";
         try {
-            // 🔥 這裡就是關鍵修復：加了時間戳強制刷新緩存
+            // 🔥 加了時間戳強制刷新緩存
             const cleanUrl = csvUrl.includes('?') ? csvUrl : csvUrl + '?';
             const response = await fetch(cleanUrl + "&t=" + Date.now());
             const text = await response.text();
@@ -843,7 +860,7 @@
             // 1. 先解析
             parseCSV(text);
             
-            // 2. 🔥 如果是房主，將解析到的 globalTimeLimit 寫入 Firebase
+            // 2. 🔥 寫入 Firebase
             if(playerRole === 'host') {
                 update(ref(db, 'rooms/' + currentRoomId), {
                     timeLimit: globalTimeLimit
@@ -852,8 +869,12 @@
             
             if(questions.length === 0) throw new Error("題庫為空");
         } catch (error) {
-            alert("讀取失敗: " + error);
-            backToLobby();
+            console.error("Loading Error:", error);
+            // 如果是在創建房間時出錯，不要跳回大廳，只顯示錯誤
+            if(document.getElementById('waitingSection').classList.contains('hidden')) {
+                 alert("讀取失敗: " + error);
+                 backToLobby();
+            }
         }
     }
 
@@ -865,16 +886,15 @@
     function parseCSV(csvText) {
         const lines = csvText.split('\n');
         
-        // 🔥 核心修復：解析時間並存入 globalTimeLimit
         try {
             if (lines.length > 0) {
                 const headerRow = lines[0].split(',');
-                // 檢查 H1 (第 8 欄, index 7)
                 if (headerRow.length >= 8) {
                     const h1Val = headerRow[7].replace(/["\r]/g, '').trim(); 
                     const parsedTime = parseInt(h1Val);
                     if (!isNaN(parsedTime) && parsedTime > 0) {
                         globalTimeLimit = parsedTime;
+                        console.log("Parsed Time Limit:", globalTimeLimit);
                     } else {
                         globalTimeLimit = 10;
                     }
@@ -939,7 +959,6 @@
         const currentServerTime = Date.now() + serverTimeOffset;
         const elapsed = currentServerTime - startTime;
         
-        // 🔥 核心修復：使用 globalTimeLimit (已經從 Firebase 同步)
         const timeLimit = globalTimeLimit * 1000; 
         
         const remaining = Math.max(0, Math.ceil((timeLimit - elapsed) / 1000));
@@ -1042,7 +1061,6 @@
         isTransitioning = false; 
         localHasAnswered = false;
         isPaused = false; 
-        // 不重置 globalTimeLimit，因為會重新讀取 CSV 或 Firebase
         
         update(ref(db, 'rooms/' + currentRoomId), { 
             status: 'waiting',
