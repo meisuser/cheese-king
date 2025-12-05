@@ -518,7 +518,7 @@
 <!-- Firebase SDK -->
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getDatabase, ref, set, onValue, update, get, child } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+    import { getDatabase, ref, set, onValue, update, get, child, onDisconnect, remove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
     const firebaseConfig = {
         apiKey: "AIzaSyAHWKkNpAG897-kwWf4EYkE-yihR9kDlbw",
@@ -639,7 +639,6 @@
                 }).then(() => {
                     alert("註冊成功！歡迎加入 Cheese King 🧀");
                     myName = username;
-                    // 🔥 修正：註冊成功後儲存帳號
                     localStorage.setItem('cheese_king_username', username);
                     enterLobby();
                 }).catch((err) => {
@@ -656,7 +655,6 @@
                 const userData = snapshot.val();
                 if(userData.password === password) {
                     myName = username;
-                    // 🔥 修正：登入成功後儲存帳號
                     localStorage.setItem('cheese_king_username', username);
                     enterLobby();
                 } else {
@@ -681,7 +679,6 @@
         myName = "";
         document.getElementById('username').value = "";
         document.getElementById('password').value = "";
-        // 🔥 修正：登出時清除儲存的帳號
         localStorage.removeItem('cheese_king_username');
         showSection('loginSection');
         if(isRegisterMode) window.toggleAuthMode();
@@ -695,7 +692,8 @@
         const seed = Math.random();
         
         // 🆕 初始化時加入時間控制欄位
-        set(ref(db, 'rooms/' + roomCode), {
+        const roomRef = ref(db, 'rooms/' + roomCode);
+        set(roomRef, {
             host: myName,
             guest: "",
             status: "waiting",
@@ -704,8 +702,13 @@
             guestScore: 0,
             seed: seed,
             currentQIndex: -1, // -1 代表還沒開始
-            qStartTime: 0      // 題目開始的時間戳
+            qStartTime: 0,      // 題目開始的時間戳
+            hostAnswered: false,
+            guestAnswered: false
         });
+
+        // 設定斷線自動刪除房間
+        onDisconnect(roomRef).remove();
 
         currentRoomId = roomCode;
         playerRole = "host";
@@ -746,7 +749,14 @@
     function listenToRoom(roomId) {
         onValue(ref(db, 'rooms/' + roomId), (snapshot) => {
             const data = snapshot.val();
-            if(!data) return;
+            // 如果房間被刪除（例如房主斷線）
+            if(!data) {
+                if(currentRoomId) {
+                    alert("房主已離開，房間已解散！");
+                    backToLobby();
+                }
+                return;
+            }
 
             if(data.seed) roomSeed = data.seed;
 
@@ -770,6 +780,15 @@
                 document.getElementById('oppScore').innerText = data.hostScore;
             }
 
+            // 檢查是否兩人都回答完畢，若是房主則觸發下一題
+            if(playerRole === 'host' && data.status === 'playing') {
+                if(data.hostAnswered && data.guestAnswered) {
+                    if(localQIndex === data.currentQIndex) {
+                         triggerNextQuestion();
+                    }
+                }
+            }
+
             // 3. 遊戲狀態控制
             if(data.status === 'playing') {
                 // 如果本地還沒進遊戲畫面，且題目還沒載入，先載入
@@ -791,7 +810,9 @@
         update(ref(db, 'rooms/' + currentRoomId), { 
             status: 'playing',
             currentQIndex: 0,
-            qStartTime: Date.now()
+            qStartTime: Date.now(),
+            hostAnswered: false,
+            guestAnswered: false
         });
     }
 
@@ -913,7 +934,9 @@
             // 下一題，並重置時間
             update(ref(db, 'rooms/' + currentRoomId), { 
                 currentQIndex: nextIndex,
-                qStartTime: Date.now()
+                qStartTime: Date.now(),
+                hostAnswered: false,
+                guestAnswered: false
             });
         }
     }
@@ -932,7 +955,6 @@
             document.getElementById('feedbackText').innerText = "答對啦！🎉";
             document.getElementById('feedbackText').style.color = "#4CD137";
             score += 100;
-            updateScore();
         } else {
             btns[choice-1].classList.add('wrong');
             if(correctAns > 0 && correctAns <= 4) {
@@ -941,14 +963,18 @@
             document.getElementById('feedbackText').innerText = "哎呀答錯了... 😱";
             document.getElementById('feedbackText').style.color = "#FF6B6B";
         }
-        // 注意：這裡不再自己呼叫 renderQuestion，而是等待 Server 時間到切換
-    }
 
-    function updateScore() {
+        // 更新分數與回答狀態
         if(playerRole === 'host') {
-            update(ref(db, 'rooms/' + currentRoomId), { hostScore: score });
+            update(ref(db, 'rooms/' + currentRoomId), { 
+                hostScore: score,
+                hostAnswered: true
+            });
         } else {
-            update(ref(db, 'rooms/' + currentRoomId), { guestScore: score });
+            update(ref(db, 'rooms/' + currentRoomId), { 
+                guestScore: score,
+                guestAnswered: true
+            });
         }
     }
 
@@ -975,7 +1001,9 @@
             guestScore: 0,
             currentQIndex: -1,
             qStartTime: 0,
-            seed: Math.random()
+            seed: Math.random(),
+            hostAnswered: false,
+            guestAnswered: false
         });
         
         score = 0;
@@ -1022,7 +1050,7 @@
         });
     }
 
-    // 🔥 修正：頁面載入時檢查是否已有儲存的帳號
+    // 檢查自動登入
     (function checkAutoLogin() {
         const savedUser = localStorage.getItem('cheese_king_username');
         if(savedUser) {
@@ -1030,7 +1058,6 @@
             enterLobby();
         }
     })();
-
 </script>
 
 </body>
